@@ -1,0 +1,68 @@
+# ==============================================================================
+# BF AGENTS HUB — .gitignore
+# Repositório Agnóstico de Templates de Agentes de IA (WhatsApp / SDR / Concierge)
+# ==============================================================================
+
+# --- Ambientes Virtuais e Caches Python ---
+.venv/
+venv/
+env/
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+**/.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# --- Segredos e Variáveis de Ambiente (CRÍTICO) ---
+# NUNCA comitar arquivos .env reais. Apenas .env.example é permitido.
+.env
+**/.env
+*.env
+.env.*
+!**/.env.example
+
+# --- Bancos de Dados Locais e Temporários ---
+*.db
+*.sqlite
+*.sqlite3
+tmp/
+**/tmp/
+*.log
+**/logs/
+
+# --- Instâncias de Clientes Locais (NÃO SUBIR CLIENTES NO GIT) ---
+# Qualquer pasta criada dentro de clients/ é automaticamente ignorada.
+clients/*
+!clients/.gitkeep
+
+# Clientes existentes legados na raiz (para não vazar em branches/monorepos)
+cred-popular/
+sdr-mais-um-passo/
+social-seller-mais-um-passo/
+ads-support/
+bf-assist/
+Agente-funil-maternidade/
+fb-ads-library-scraper/
+qr-connector/
+webhook-router-deprecated/
+sdr-plus-um-passo.bak-*/
+*.bak*
+
+blueprints/
+# --- Portas de Produção Local ---
+# Use PORTS.example.md como referência no Git
+PORTS.md
+
+# --- Arquivos de Sistema e IDEs ---
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo

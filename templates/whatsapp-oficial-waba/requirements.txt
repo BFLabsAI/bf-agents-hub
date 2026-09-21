@@ -1,0 +1,9 @@
+agno>=1.0.0
+anthropic
+openai
+httpx
+fastapi
+uvicorn[standard]
+python-dotenv
+sqlalchemy
+pydantic>=2.0

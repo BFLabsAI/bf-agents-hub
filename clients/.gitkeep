@@ -1,0 +1,2 @@
+# This file ensures the clients/ directory is tracked in Git.
+# Individual client folders inside clients/ are ignored by .gitignore.

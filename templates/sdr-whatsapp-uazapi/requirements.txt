@@ -1,0 +1,9 @@
+agno
+fastapi
+uvicorn
+psycopg[binary]
+httpx
+apscheduler
+python-dotenv
+pytest
+pytest-asyncio

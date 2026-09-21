@@ -1,0 +1,11 @@
+services:
+  whatsapp-agent:
+    build: .
+    container_name: whatsapp-agent
+    command: uvicorn app.whatsapp_api:app --host 0.0.0.0 --port 8000 --log-level info
+    env_file: .env
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./tmp:/app/tmp
+    restart: unless-stopped

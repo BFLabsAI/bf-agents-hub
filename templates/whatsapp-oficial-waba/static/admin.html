@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ítalo Monitor</title>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            base:    '#0d1117',
+            surface: '#161b22',
+            card:    '#21262d',
+            border:  '#30363d',
+          },
+        },
+      },
+    }
+  </script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
+    body { background: #0d1117; color: #c9d1d9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; }
+
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #30363d; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #484f58; }
+
+    .chat-bubble-user   { background: #1f6feb; color: #fff; border-radius: 18px 18px 4px 18px; }
+    .chat-bubble-agent  { background: #21262d; color: #c9d1d9; border-radius: 18px 18px 18px 4px; }
+
+    .tx-row { transition: background 0.12s; }
+    .tx-row:hover { background: #1c2128; }
+
+    .event-line + .event-line { border-top: 1px solid #21262d; }
+
+    .pulse-dot { animation: pulse 2s cubic-bezier(0.4,0,0.6,1) infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+    [x-cloak] { display: none !important; }
+
+    .tab-active   { background: #1f6feb; color: #fff; }
+    .tab-inactive { color: #8b949e; }
+    .tab-inactive:hover { color: #c9d1d9; background: #21262d; }
+  </style>
+</head>
+
+<body class="flex h-screen overflow-hidden" x-data="monitor()" x-cloak>
+
+  <!-- ── SIDEBAR ──────────────────────────────────────────────────────────── -->
+  <aside class="flex flex-col w-72 flex-none border-r border-border" style="background:#161b22">
+
+    <!-- Header -->
+    <div class="flex items-center justify-between px-4 py-3 border-b border-border">
+      <div class="flex items-center gap-2">
+        <span class="text-base font-semibold tracking-tight">Ítalo Monitor</span>
+      </div>
+      <div class="flex items-center gap-1.5 text-xs" :class="connected ? 'text-green-400' : 'text-red-400'">
+        <span class="w-1.5 h-1.5 rounded-full flex-none" :class="connected ? 'bg-green-400 pulse-dot' : 'bg-red-400'" ></span>
+        <span x-text="connected ? 'live' : 'offline'"></span>
+      </div>
+    </div>
+
+    <!-- Channel tabs -->
+    <div class="flex gap-1 px-3 pt-2 pb-1">
+      <button
+        @click="sidebarTab='whatsapp'"
+        class="flex-1 text-xs py-1.5 rounded font-medium transition-colors"
+        :class="sidebarTab==='whatsapp' ? 'bg-green-700 text-white' : 'text-gray-500 hover:text-gray-300 bg-card'"
+      >WhatsApp</button>
+      <button
+        @click="sidebarTab='webchat'"
+        class="flex-1 text-xs py-1.5 rounded font-medium transition-colors"
+        :class="sidebarTab==='webchat' ? 'bg-blue-700 text-white' : 'text-gray-500 hover:text-gray-300 bg-card'"
+      >Webchat</button>
+    </div>
+
+    <!-- Sessions label + refresh -->
+    <div class="flex items-center justify-between px-4 pt-2 pb-1">
+      <span class="text-xs font-medium uppercase tracking-wider text-gray-500">Sessões</span>
+      <button @click="loadSessions()" class="text-xs text-gray-600 hover:text-gray-400 transition-colors">↻</button>
+    </div>
+
+    <!-- Sessions list -->
+    <div class="flex-1 overflow-y-auto">
+      <template x-if="loadingSessions">
+        <div class="px-4 py-6 text-center text-xs text-gray-600">Carregando...</div>
+      </template>
+
+      <template x-if="!loadingSessions && sessions.length === 0">
+        <div class="px-4 py-6 text-center text-xs text-gray-600">Nenhuma sessão ainda</div>
+      </template>
+
+      <template x-for="s in filteredSessions" :key="s.session_id">
+        <button
+          @click="selectSession(s)"
+          class="w-full text-left px-4 py-3 border-b border-border transition-colors hover:bg-card"
+          :class="selectedSession?.session_id === s.session_id ? 'bg-card border-l-2 border-l-blue-500' : ''"
+        >
+          <div class="flex items-center justify-between mb-0.5">
+            <span class="text-sm font-medium truncate" x-text="s.channel === 'webchat' ? formatUuid(s.from_number) : formatPhone(s.from_number)"></span>
+            <span class="text-xs text-gray-600 flex-none ml-2" x-text="relTime(s.updated_at)"></span>
+          </div>
+          <div class="text-xs text-gray-500 truncate" x-text="s.last_message || '—'"></div>
+          <div class="mt-0.5 text-xs text-gray-700" x-text="`${s.message_count} msg`"></div>
+        </button>
+      </template>
+    </div>
+
+    <!-- Footer -->
+    <div class="px-4 py-2 border-t border-border text-xs text-gray-700">
+      <span x-text="`${filteredSessions.length} sessões`"></span>
+    </div>
+  </aside>
+
+  <!-- ── MAIN ──────────────────────────────────────────────────────────────── -->
+  <main class="flex flex-col flex-1 min-w-0">
+
+    <!-- Empty state (no session selected) -->
+    <div x-show="!selectedSession" class="flex-1 flex items-center justify-center">
+      <div class="text-center text-gray-600">
+        <div class="text-5xl mb-4">💬</div>
+        <div class="text-base font-medium text-gray-500">Selecione uma sessão</div>
+        <div class="text-sm mt-1">para ver o histórico de mensagens e logs</div>
+      </div>
+    </div>
+
+    <!-- Session selected -->
+    <div x-show="selectedSession" class="flex flex-col flex-1 min-h-0" style="display:none">
+
+        <!-- Sub-header -->
+        <div class="flex items-center justify-between px-5 py-3 border-b border-border flex-none" style="background:#161b22">
+          <div>
+            <div class="flex items-center gap-2">
+              <div class="font-semibold text-sm" x-text="selectedSession.channel === 'webchat' ? formatUuid(selectedSession.from_number) : formatPhone(selectedSession.from_number)"></div>
+              <span
+                class="text-xs px-1.5 py-0.5 rounded font-medium"
+                :class="selectedSession.channel === 'webchat' ? 'bg-blue-900 text-blue-300' : 'bg-green-900 text-green-300'"
+                x-text="selectedSession.channel === 'webchat' ? 'Webchat' : 'WhatsApp'"
+              ></span>
+            </div>
+            <div class="text-xs text-gray-600 font-mono" x-text="selectedSession.session_id"></div>
+          </div>
+          <!-- Tabs -->
+          <div class="flex gap-1 rounded-lg p-0.5" style="background:#0d1117">
+            <button
+              @click="tab='chat'"
+              class="px-3 py-1.5 text-xs font-medium rounded-md transition-colors"
+              :class="tab==='chat' ? 'tab-active' : 'tab-inactive'"
+            >Chat</button>
+            <button
+              @click="tab='logs'"
+              class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors"
+              :class="tab==='logs' ? 'tab-active' : 'tab-inactive'"
+            >
+              Logs
+              <span
+                x-show="transactions.length > 0"
+                class="text-xs rounded-full px-1.5 py-0.5 font-mono"
+                :class="tab==='logs' ? 'bg-blue-700 text-blue-200' : 'bg-card text-gray-500'"
+                x-text="transactions.length"
+              ></span>
+            </button>
+          </div>
+        </div>
+
+        <!-- ── CHAT TAB ──────────────────────────────────────────────────── -->
+        <div
+          x-show="tab === 'chat'"
+          class="flex-1 overflow-y-auto px-6 py-4 space-y-3"
+          x-ref="chatContainer"
+        >
+          <template x-if="loadingMessages">
+            <div class="text-center py-10 text-xs text-gray-600">Carregando mensagens...</div>
+          </template>
+
+          <template x-if="!loadingMessages && messages.length === 0">
+            <div class="text-center py-10 text-xs text-gray-600">Nenhuma mensagem no histórico</div>
+          </template>
+
+          <template x-for="(msg, i) in messages" :key="i">
+            <div class="flex" :class="msg.role === 'user' ? 'justify-end' : 'justify-start'">
+              <div class="max-w-sm xl:max-w-lg">
+                <div
+                  class="px-3.5 py-2.5 text-sm leading-relaxed whitespace-pre-wrap break-words"
+                  :class="msg.role === 'user' ? 'chat-bubble-user' : 'chat-bubble-agent'"
+                  x-text="msg.content"
+                ></div>
+                <div
+                  class="mt-1 text-xs text-gray-700"
+                  :class="msg.role === 'user' ? 'text-right' : 'text-left'"
+                  x-text="fmtTime(msg.created_at)"
+                ></div>
+              </div>
+            </div>
+          </template>
+        </div>
+
+        <!-- ── LOGS TAB ──────────────────────────────────────────────────── -->
+        <div
+          x-show="tab === 'logs'"
+          class="flex-1 overflow-y-auto p-4 space-y-2"
+        >
+          <template x-if="transactions.length === 0">
+            <div class="text-center py-10 text-xs text-gray-600">Nenhum log nesta sessão</div>
+          </template>
+
+          <template x-for="tx in transactions" :key="tx.id">
+            <div class="rounded-lg border border-border overflow-hidden">
+
+              <!-- Transaction header -->
+              <button
+                @click="toggleTx(tx.id)"
+                class="tx-row w-full flex items-center gap-3 px-4 py-2.5 text-left"
+                style="background:#161b22"
+              >
+                <!-- Chevron -->
+                <span
+                  class="text-gray-600 text-xs transition-transform duration-150 flex-none"
+                  :style="isExpanded(tx.id) ? 'transform:rotate(90deg)' : ''"
+                >▶</span>
+
+                <!-- Time -->
+                <span class="text-xs text-gray-600 font-mono flex-none" x-text="fmtTime(tx.started_at)"></span>
+
+                <!-- Message preview -->
+                <span class="text-xs text-gray-300 flex-1 truncate min-w-0" x-text="tx.user_message"></span>
+
+                <!-- Status -->
+                <div class="flex items-center gap-1.5 flex-none">
+                  <template x-if="tx.status === 'processing'">
+                    <span class="flex items-center gap-1 text-xs text-yellow-400">
+                      <span class="w-1.5 h-1.5 bg-yellow-400 rounded-full pulse-dot"></span>
+                      processando
+                    </span>
+                  </template>
+                  <template x-if="tx.status === 'completed'">
+                    <span class="text-xs text-green-400 font-medium">
+                      ✓ <span x-text="tx.duration_ms ? (tx.duration_ms/1000).toFixed(1)+'s' : ''"></span>
+                    </span>
+                  </template>
+                  <template x-if="tx.status === 'error'">
+                    <span class="text-xs text-red-400 font-medium">✗ erro</span>
+                  </template>
+                </div>
+              </button>
+
+              <!-- Events timeline (expanded) -->
+              <div x-show="isExpanded(tx.id)" style="background:#0d1117">
+
+                <!-- Received -->
+                <div class="event-line flex gap-3 px-4 py-2.5">
+                  <span class="text-base flex-none leading-none mt-0.5">📨</span>
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2">
+                      <span class="text-xs font-medium text-blue-400">Mensagem recebida</span>
+                      <span class="text-xs text-gray-700 font-mono ml-auto" x-text="fmtTimeMs(tx.started_at)"></span>
+                    </div>
+                    <div class="mt-1 text-xs text-gray-400 break-words leading-relaxed" x-text="tx.user_message"></div>
+                  </div>
+                </div>
+
+                <!-- Dynamic events -->
+                <template x-for="(ev, ei) in tx.events" :key="ei">
+                  <div class="event-line px-4 py-2">
+
+                    <!-- api_request -->
+                    <template x-if="ev.type === 'api_request'">
+                      <div>
+                        <!-- header row -->
+                        <div class="flex gap-2 items-center">
+                          <span class="text-xs font-mono text-gray-500 flex-none">→</span>
+                          <span class="text-xs font-mono font-semibold flex-none"
+                                :class="{'text-purple-400': ev.data.method==='POST', 'text-cyan-400': ev.data.method==='GET', 'text-orange-400': ['PUT','PATCH','DELETE'].includes(ev.data.method)}"
+                                x-text="ev.data.method">
+                          </span>
+                          <span class="text-xs font-mono text-gray-300 flex-1 break-all" x-text="ev.data.path + (ev.data.qs ? '?' + ev.data.qs : '')"></span>
+                          <!-- curl toggle -->
+                          <button
+                            x-show="ev.data.curl"
+                            @click.stop="toggleCurl(tx.id + '-' + ei)"
+                            class="flex-none text-xs px-1.5 py-0.5 rounded font-mono border transition-colors"
+                            :class="isCurlOpen(tx.id + '-' + ei) ? 'border-green-700 text-green-400 bg-green-900/20' : 'border-gray-700 text-gray-600 hover:text-gray-400 hover:border-gray-500'"
+                          >curl</button>
+                          <span class="text-xs text-gray-700 font-mono flex-none" x-text="fmtTimeMs(ev.timestamp)"></span>
+                        </div>
+                        <!-- curl dropdown -->
+                        <div x-show="isCurlOpen(tx.id + '-' + ei)" class="mt-1.5 ml-4">
+                          <pre class="text-xs font-mono text-green-300 rounded p-2.5 overflow-x-auto whitespace-pre leading-relaxed" style="background:#0d1117;border:1px solid #1f3a1f" x-text="ev.data.curl"></pre>
+                        </div>
+                        <!-- request body -->
+                        <template x-if="ev.data.body">
+                          <pre class="mt-1 ml-4 text-xs text-gray-500 font-mono whitespace-pre-wrap break-all leading-relaxed" x-text="fmtBody(ev.data.body)"></pre>
+                        </template>
+                      </div>
+                    </template>
+
+                    <!-- api_response -->
+                    <template x-if="ev.type === 'api_response'">
+                      <div>
+                        <!-- header row -->
+                        <div class="flex gap-2 items-baseline">
+                          <span class="text-xs font-mono text-gray-500 flex-none">←</span>
+                          <span class="text-xs font-mono font-bold flex-none"
+                                :class="ev.data.status >= 500 ? 'text-red-400' : ev.data.status >= 400 ? 'text-orange-400' : ev.data.status >= 300 ? 'text-yellow-400' : 'text-green-400'"
+                                x-text="ev.data.status">
+                          </span>
+                          <span class="text-xs text-gray-500 flex-none" x-text="ev.data.duration_ms + 'ms'"></span>
+                          <span class="text-xs font-mono text-gray-600 flex-1 truncate" x-text="ev.data.path"></span>
+                        </div>
+                        <!-- response body -->
+                        <template x-if="ev.data.body">
+                          <pre class="mt-1 ml-4 text-xs font-mono whitespace-pre-wrap break-all leading-relaxed"
+                               :class="ev.data.status >= 400 ? 'text-red-400' : 'text-gray-500'"
+                               x-text="fmtBody(ev.data.body)"></pre>
+                        </template>
+                      </div>
+                    </template>
+
+                    <!-- webchat_headers event -->
+                    <template x-if="ev.type === 'webchat_headers'">
+                      <div class="flex gap-2 items-start">
+                        <span class="text-xs flex-none">🌐</span>
+                        <div class="flex-1 min-w-0">
+                          <span class="text-xs font-medium text-cyan-400">Headers da requisição</span>
+                          <div class="mt-1 flex flex-wrap gap-2">
+                            <span class="text-xs font-mono px-1.5 py-0.5 rounded"
+                                  :class="ev.data.authorization ? 'bg-green-900 text-green-300' : 'bg-gray-800 text-gray-500'"
+                                  x-text="ev.data.authorization ? '🔑 Authorization: presente' : '🔓 Authorization: ausente'">
+                            </span>
+                            <span x-show="ev.data.origin" class="text-xs font-mono bg-gray-800 text-gray-400 px-1.5 py-0.5 rounded"
+                                  x-text="'Origin: ' + ev.data.origin"></span>
+                          </div>
+                          <template x-if="ev.data.auth_context && Object.keys(ev.data.auth_context).length > 0">
+                            <pre class="mt-1.5 text-xs font-mono text-cyan-300 whitespace-pre-wrap break-all leading-relaxed"
+                                 x-text="JSON.stringify(ev.data.auth_context, null, 2)"></pre>
+                          </template>
+                        </div>
+                      </div>
+                    </template>
+
+                    <!-- error event -->
+                    <template x-if="ev.type === 'error'">
+                      <div class="flex gap-2">
+                        <span class="text-xs flex-none">⚠</span>
+                        <div class="flex-1 min-w-0">
+                          <span class="text-xs font-medium text-red-400">Erro — </span>
+                          <span class="text-xs text-red-300 break-words" x-text="ev.data.message"></span>
+                        </div>
+                      </div>
+                    </template>
+
+                  </div>
+                </template>
+
+                <!-- Reply sent -->
+                <template x-if="tx.status === 'completed' && tx.agent_reply">
+                  <div class="event-line flex gap-3 px-4 py-2.5">
+                    <span class="text-base flex-none leading-none mt-0.5">📤</span>
+                    <div class="flex-1 min-w-0">
+                      <div class="flex items-center gap-2">
+                        <span class="text-xs font-medium text-indigo-400">Resposta enviada</span>
+                        <span x-show="tx.duration_ms" class="text-xs text-gray-500"
+                              x-text="(tx.duration_ms/1000).toFixed(1)+'s'">
+                        </span>
+                        <span class="text-xs text-gray-700 font-mono ml-auto" x-text="fmtTimeMs(tx.completed_at)"></span>
+                      </div>
+                      <div class="mt-1 text-xs text-gray-400 break-words leading-relaxed"
+                           x-text="tx.agent_reply.length > 320 ? tx.agent_reply.slice(0,320)+'…' : tx.agent_reply">
+                      </div>
+                    </div>
+                  </div>
+                </template>
+
+                <!-- Error terminal state -->
+                <template x-if="tx.status === 'error'">
+                  <div class="event-line flex gap-3 px-4 py-2.5">
+                    <span class="flex-none w-4 text-center">❌</span>
+                    <span class="text-xs text-red-400">Transação encerrada com erro</span>
+                  </div>
+                </template>
+
+              </div>
+            </div>
+          </template>
+        </div>
+
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ── ALPINE COMPONENT ───────────────────────────────────────────────────── -->
+  <script>
+    function monitor() {
+      return {
+        // State
+        sessions: [],
+        selectedSession: null,
+        sidebarTab: 'whatsapp',
+        tab: 'chat',
+        messages: [],
+        transactions: [],
+        expandedIds: [],
+        expandedCurls: [],
+        connected: false,
+        loadingSessions: false,
+        loadingMessages: false,
+        _es: null,
+
+        get filteredSessions() {
+          return this.sessions.filter(s => (s.channel || 'whatsapp') === this.sidebarTab);
+        },
+
+        // ── Lifecycle ──────────────────────────────────────────────────────
+
+        async init() {
+          await this.loadSessions();
+          this.connectSSE();
+        },
+
+        // ── Sessions ───────────────────────────────────────────────────────
+
+        async loadSessions() {
+          this.loadingSessions = true;
+          try {
+            const r = await fetch('/sbot/admin/sessions');
+            this.sessions = await r.json();
+          } catch (e) {
+            console.error('loadSessions failed', e);
+          } finally {
+            this.loadingSessions = false;
+          }
+        },
+
+        async selectSession(s) {
+          this.selectedSession = s;
+          this.messages = [];
+          this.transactions = [];
+          this.expandedIds = [];
+          this.expandedCurls = [];
+          await Promise.all([
+            this.loadMessages(s.session_id),
+            this.loadTransactions(s.session_id),
+          ]);
+        },
+
+        // ── Chat ───────────────────────────────────────────────────────────
+
+        async loadMessages(sessionId) {
+          this.loadingMessages = true;
+          try {
+            const r = await fetch(`/sbot/admin/sessions/${encodeURIComponent(sessionId)}/messages`);
+            if (!r.ok) throw new Error(`HTTP ${r.status}`);
+            this.messages = await r.json();
+            setTimeout(() => this._scrollChat(), 50);
+          } catch (e) {
+            console.error('loadMessages failed', e);
+            this.messages = [];
+          } finally {
+            this.loadingMessages = false;
+          }
+        },
+
+        _scrollChat() {
+          const el = this.$refs.chatContainer;
+          if (el) el.scrollTop = el.scrollHeight;
+        },
+
+        // ── Transactions ───────────────────────────────────────────────────
+
+        async loadTransactions(sessionId) {
+          try {
+            const r = await fetch(`/sbot/admin/transactions?session_id=${encodeURIComponent(sessionId)}`);
+            this.transactions = await r.json();
+          } catch (e) {
+            console.error('loadTransactions failed', e);
+          }
+        },
+
+        toggleTx(id) {
+          const i = this.expandedIds.indexOf(id);
+          if (i >= 0) this.expandedIds.splice(i, 1);
+          else this.expandedIds.push(id);
+        },
+
+        isExpanded(id) {
+          return this.expandedIds.includes(id);
+        },
+
+        toggleCurl(key) {
+          const i = this.expandedCurls.indexOf(key);
+          if (i >= 0) this.expandedCurls.splice(i, 1);
+          else this.expandedCurls.push(key);
+        },
+
+        isCurlOpen(key) {
+          return this.expandedCurls.includes(key);
+        },
+
+        // ── SSE ────────────────────────────────────────────────────────────
+
+        connectSSE() {
+          if (this._es) { this._es.close(); this._es = null; }
+          const es = new EventSource('/sbot/admin/stream');
+          this._es = es;
+
+          es.onopen    = () => { this.connected = true; };
+          es.onerror   = () => {
+            this.connected = false;
+            es.close();
+            setTimeout(() => this.connectSSE(), 3000);
+          };
+          es.onmessage = (e) => {
+            try { this._handleSSE(JSON.parse(e.data)); }
+            catch (err) { console.warn('SSE parse error', err); }
+          };
+        },
+
+        _handleSSE(payload) {
+          // ── init: server sends all in-memory transactions ──
+          if (payload.type === 'init') {
+            for (const tx of payload.transactions) this._upsertTx(tx);
+            return;
+          }
+
+          // ── new transaction started ──
+          if (payload.type === 'transaction_start') {
+            this._updateSessionList(payload.transaction);
+            this._upsertTx(payload.transaction);
+            return;
+          }
+
+          // ── individual event appended to a live transaction ──
+          if (payload.type === 'event') {
+            const tx = this.transactions.find(t => t.id === payload.transaction_id);
+            if (tx) tx.events.push(payload.event);
+            return;
+          }
+
+          // ── transaction completed ──
+          if (payload.type === 'transaction_complete') {
+            const tx = payload.transaction;
+            this._upsertTx(tx);
+            if (this.selectedSession?.session_id === tx.session_id) {
+              // Push new messages into chat if we're on Chat tab
+              const alreadyHas = this.messages.some(
+                m => m.role === 'user' && m.content === tx.user_message
+              );
+              if (!alreadyHas) {
+                this.messages.push({ role: 'user',      content: tx.user_message,  created_at: tx.started_at   });
+                this.messages.push({ role: 'assistant', content: tx.agent_reply,   created_at: tx.completed_at });
+                setTimeout(() => this._scrollChat(), 50);
+              }
+            }
+            return;
+          }
+
+          // ── transaction errored ──
+          if (payload.type === 'transaction_error') {
+            const tx = this.transactions.find(t => t.id === payload.transaction_id);
+            if (tx) { tx.status = 'error'; tx.completed_at = new Date().toISOString(); }
+          }
+        },
+
+        _upsertTx(tx) {
+          if (!this.selectedSession || tx.session_id !== this.selectedSession.session_id) return;
+          const i = this.transactions.findIndex(t => t.id === tx.id);
+          if (i >= 0) this.transactions[i] = tx;
+          else        this.transactions.unshift(tx);
+        },
+
+        _channelFromSessionId(id) {
+          if ((id || '').startsWith('sbot-web-')) return 'webchat';
+          return 'whatsapp';
+        },
+
+        _updateSessionList(tx) {
+          const s = this.sessions.find(s => s.session_id === tx.session_id);
+          if (s) {
+            s.last_message = tx.user_message;
+            s.updated_at   = tx.started_at;
+            s.message_count = (s.message_count || 0) + 1;
+          } else {
+            const ch = this._channelFromSessionId(tx.session_id);
+            const fromNum = ch === 'webchat'
+              ? tx.session_id.replace('sbot-web-', '')
+              : tx.from_number;
+            this.sessions.unshift({
+              session_id:    tx.session_id,
+              from_number:   fromNum,
+              channel:       ch,
+              last_message:  tx.user_message,
+              message_count: 1,
+              updated_at:    tx.started_at,
+            });
+          }
+        },
+
+        // ── Formatting ─────────────────────────────────────────────────────
+
+        formatPhone(p) {
+          if (!p) return '—';
+          const d = p.replace(/\D/g, '');
+          if (d.length === 13) // 55 + DDD(2) + 9 digits
+            return `+${d.slice(0,2)} (${d.slice(2,4)}) ${d.slice(4,9)}-${d.slice(9)}`;
+          if (d.length === 12) // 55 + DDD(2) + 8 digits
+            return `+${d.slice(0,2)} (${d.slice(2,4)}) ${d.slice(4,8)}-${d.slice(8)}`;
+          return p;
+        },
+
+        formatUuid(u) {
+          if (!u) return '—';
+          // Show first 8 chars of UUID for compactness
+          return u.length > 8 ? u.slice(0, 8) + '…' : u;
+        },
+
+        fmtTime(iso) {
+          if (!iso) return '';
+          try {
+            const d = typeof iso === 'number' ? new Date(iso * 1000) : new Date(iso);
+            return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+          } catch { return ''; }
+        },
+
+        fmtTimeMs(iso) {
+          if (!iso) return '';
+          try {
+            const d = typeof iso === 'number' ? new Date(iso * 1000) : new Date(iso);
+            return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+              + '.' + String(d.getMilliseconds()).padStart(3, '0');
+          } catch { return ''; }
+        },
+
+        fmtBody(body) {
+          if (body === null || body === undefined) return '';
+          try {
+            const s = typeof body === 'string' ? body : JSON.stringify(body, null, 2);
+            return s.length > 1200 ? s.slice(0, 1200) + '\n…' : s;
+          } catch { return String(body); }
+        },
+
+        relTime(iso) {
+          if (!iso) return '';
+          try {
+            const diff = Date.now() - new Date(iso).getTime();
+            const s = Math.floor(diff / 1000);
+            if (s < 60)   return 'agora';
+            const m = Math.floor(s / 60);
+            if (m < 60)   return `${m}min`;
+            const h = Math.floor(m / 60);
+            if (h < 24)   return `${h}h`;
+            return `${Math.floor(h / 24)}d`;
+          } catch { return ''; }
+        },
+      };
+    }
+  </script>
+</body>
+</html>
