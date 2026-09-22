@@ -40,7 +40,7 @@ from agno.learn import (
     UserProfileConfig,
 )
 
-from shared.model_factory import omniroute
+from shared.model_factory import nine_router, omniroute
 
 from config import IDENTITY
 from system_prompt import build_system_prompt
@@ -93,7 +93,7 @@ def build_agent() -> Agent:
         id="sdr-template",
         name=IDENTITY.get("agent_name", "SDR"),
         description=f"SDR de qualificacao para {IDENTITY.get('company_name', '')}.",
-        model=omniroute(),
+        model=nine_router(),
         db=db,
         tools=TOOLS,
         system_message=build_system_prompt(IDENTITY),

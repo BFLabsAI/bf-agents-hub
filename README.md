@@ -29,7 +29,7 @@ bf-agents-hub/
 │
 ├── shared/                         # Módulos compartilhados agnósticos
 │   ├── __init__.py
-│   ├── model_factory.py            # Gateway LLM (OmniRoute / OpenRouter / Anthropic)
+│   ├── model_factory.py            # Gateway LLM (9Router ou qualquer API OpenAI-compatible)
 │   ├── webhook_core.py             # Normalização e helpers para UazAPI
 │   └── webhook_core_waba.py        # Normalização e helpers para Meta Cloud API v23.0
 │
@@ -106,7 +106,8 @@ Preencha as credenciais obrigatórias:
 - `DATABASE_URL`: Conexão PostgreSQL (ex: `postgresql://user:senha@localhost:5432/nome_db`).
 - `PORT`: Porta dedicada (consulte `PORTS.md` para a próxima porta livre, ex: `7776`).
 - `SLUG`: Identificador em minúsculas (ex: `cliente-x`).
-- Chaves de API: `OMNIROUTE_API_KEY` ou `OPENROUTER_API_KEY`, e credenciais do WhatsApp (UazAPI ou Meta WABA).
+- Gateway de IA: `NINEROUTER_BASE_URL` e `NINEROUTER_API_KEY` (apontando para o 9Router ou qualquer API compatível com OpenAI, como OpenRouter, Groq, OpenAI ou Ollama).
+- Credenciais do canal de WhatsApp (UazAPI ou Meta WABA).
 
 ### Passo 3: Inicializar o Banco de Dados
 Para o template SDR, carregue o schema inicial:

@@ -59,6 +59,27 @@ Ao operar neste repositório, o Agente de IA DEVE carregar e utilizar as seguint
   - `~/.agents/skills/bf-waba-expert/references/webhooks-and-security.md` (HMAC e handshake anti-XSS)
   - `~/.agents/skills/bf-waba-expert/references/templates-and-lifecycle.md` (ciclo de vida de templates, janela 24h e pricing)
   - `~/.agents/skills/bf-waba-expert/references/coexistence-and-compliance.md` (coexistência App + Cloud API no mesmo número)
+
+### 🌟 `9router` (`~/.agents/skills/9router/` ou `skill://9router`)
+**Gateway de IA Padrão do Hub:** O 9Router é o proxy local/remoto que expõe API REST 100% compatível com a OpenAI, oferecendo auto-fallback, agregação de modelos (Claude, GPT, Gemini, DeepSeek, Grok) sob uma única chave e economia de tokens.
+
+- **Configuração de Ambiente nos Agentes:**
+  ```bash
+  # No .env (deixe as variáveis declaradas, preencha no deploy do cliente)
+  NINEROUTER_BASE_URL=   # ex: http://localhost:20128/v1 ou URL pública/túnel
+  NINEROUTER_API_KEY=    # Chave configurada no 9Router (ou vazio se auth desativada)
+  AGNO_DEFAULT_MODEL=openai/gpt-4o-mini
+  ```
+- **Flexibilidade Total (Qualquer API OpenAI-compatible):**
+  - Se o cliente ou desenvolvedor **NÃO quiser usar o 9Router**, o sistema aceita **qualquer API compatível com OpenAI**.
+  - Basta apontar `NINEROUTER_BASE_URL` (ou `OPENAI_BASE_URL`) e `NINEROUTER_API_KEY` (ou `OPENAI_API_KEY`) para o provedor desejado:
+    - **OpenRouter:** `https://openrouter.ai/api/v1`
+    - **Groq:** `https://api.groq.com/openai/v1`
+    - **OpenAI Direta:** `https://api.openai.com/v1`
+    - **Ollama / vLLM / LiteLLM / DeepSeek:** `http://seu-host:porta/v1`
+- **Diagnóstico e Teste Rápido:**
+  - Healthcheck: `curl $NINEROUTER_URL/api/health` → `{"ok":true}`
+  - Descobrir modelos disponíveis: `curl $NINEROUTER_URL/v1/models`
 ---
 
 ## 4. Guia de Decisão de Templates

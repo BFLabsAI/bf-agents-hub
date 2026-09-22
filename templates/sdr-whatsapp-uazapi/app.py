@@ -389,10 +389,10 @@ async def _multimodal_caller(media_url: str, media_type: str) -> str:
     Wraps the regular multimodal model to transcribe/extract. Only invoked in
     production; tests inject their own transcriber so this never hits the model.
     """
-    from shared.model_factory import omniroute
+    from shared.model_factory import nine_router, omniroute
 
-    model = omniroute(os.getenv("AGNO_MULTIMODAL_MODEL", "mimo/mimo-v2.5"))
-    # The exact multimodal call shape depends on the omniroute model adapter;
+    model = nine_router(os.getenv("AGNO_MULTIMODAL_MODEL", "mimo/mimo-v2.5"))
+    # O formato exato da chamada multimodal depende do modelo configurado no gateway;
     # production wiring fills this in. Kept minimal to avoid network in import.
     raise NotImplementedError(
         "multimodal model caller must be wired with the omniroute media adapter"

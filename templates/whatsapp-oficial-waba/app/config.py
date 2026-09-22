@@ -11,10 +11,22 @@ CLIENT_ENV = os.getenv("CLIENT_ENV", "")
 # SSL verification — set to "false" for APIs with self-signed/mismatched certs
 CLIENT_SSL_VERIFY = os.getenv("CLIENT_SSL_VERIFY", "true").lower() not in ("false", "0", "no")
 
-# LLM — OpenRouter (OpenAI-compatible)
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
-OPENROUTER_MODEL_ID = os.getenv("OPENROUTER_MODEL_ID", "anthropic/claude-3-haiku")
-OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
+# LLM — 9Router ou qualquer gateway compatível com OpenAI
+NINEROUTER_BASE_URL = (
+    os.getenv("NINEROUTER_BASE_URL")
+    or os.getenv("NINEROUTER_URL")
+    or os.getenv("OPENAI_BASE_URL")
+    or os.getenv("OPENROUTER_BASE_URL")
+    or ""
+)
+NINEROUTER_API_KEY = (
+    os.getenv("NINEROUTER_API_KEY")
+    or os.getenv("NINEROUTER_KEY")
+    or os.getenv("OPENAI_API_KEY")
+    or os.getenv("OPENROUTER_API_KEY")
+    or ""
+)
+AGNO_DEFAULT_MODEL = os.getenv("AGNO_DEFAULT_MODEL", os.getenv("OPENROUTER_MODEL_ID", "openai/gpt-4o-mini"))
 
 # PostgreSQL Database & Session storage
 DATABASE_URL = os.getenv(

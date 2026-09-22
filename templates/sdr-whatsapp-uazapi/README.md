@@ -109,7 +109,7 @@ See `.env.example` for the full list. Highlights:
 | `DATABASE_URL_PSYCOPG` | plain `postgresql://...` — for cron DB connections (optional; derived from `DATABASE_URL` if unset). |
 | `SLUG` | webhook path + session/user id prefix (default `sdr`). |
 | `PORT` | HTTP port (default `7780`). |
-| `OMNIROUTE_API_KEY`, `AGNO_DEFAULT_MODEL` | model routing (Omniroute proxy). |
+| `NINEROUTER_BASE_URL`, `NINEROUTER_API_KEY`, `AGNO_DEFAULT_MODEL` | Roteamento de modelos (9Router ou qualquer API OpenAI-compatible). |
 | `AGNO_MULTIMODAL_MODEL` | **must** be the regular multimodal model (`mimo/mimo-v2.5`, not `-pro`). |
 | `UAZAPI_BASE`, `UAZAPI_TOKEN`, `UAZAPI_INSTANCE` | WhatsApp channel. |
 | `GHL_PIT`, `GHL_LOCATION_ID`, `GHL_PIPELINE_ID` | GoHighLevel CRM. |
