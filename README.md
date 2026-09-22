@@ -13,6 +13,8 @@ Este repositório foi desenhado para ser **100% agnóstico**: o Git rastreia ape
 | **`templates/sdr-whatsapp-uazapi/`** | WhatsApp | Não-Oficial (UazAPI) | PostgreSQL (`AsyncPostgresDb`) | Qualificação ativa (SDR), cadência de follow-ups automáticos (APScheduler), repasse para vendedores humanos e sincronização com GoHighLevel (GHL). |
 | **`templates/whatsapp-oficial-waba/`** | WhatsApp | Oficial (Meta Cloud API v23.0) | PostgreSQL (`PostgresDb` + pool psycopg) | Atendimento consultivo, concierge, mensagens ricas interativas (botões, listas, carrosséis, mídias), human takeover (pausa da IA) e painel admin em tempo real. |
 
+> 💡 **Skill Especialista WABA:** Ao desenvolver ou debugar com a API Oficial da Meta, consulte a skill **`bf-waba-expert`** (`~/.agents/skills/bf-waba-expert/` ou `skill://bf-waba-expert`). Ela documenta as regras da Graph API, validação de HMAC-SHA256, diagnóstico de falhas silenciosas de webhook e coexistência.
+
 ---
 
 ## 2. Arquitetura do Repositório

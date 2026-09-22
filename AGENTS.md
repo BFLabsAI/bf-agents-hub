@@ -39,9 +39,29 @@ O `bf-agents-hub` é o motor central de agentes de WhatsApp em produção da BF 
 5. **UVICORN WORKERS = 1:**
    - O Agno com `AsyncPostgresDb` **não é seguro para forks**. O comando do uvicorn deve obrigatoriamente rodar com `--workers 1`.
 
+
 ---
 
-## 3. Guia de Decisão de Templates
+## 3. Skills Obrigatórias do Agente
+
+Ao operar neste repositório, o Agente de IA DEVE carregar e utilizar as seguintes skills locais:
+
+### 🌟 `bf-waba-expert` (`~/.agents/skills/bf-waba-expert/` ou `skill://bf-waba-expert`)
+**SEMPRE ATIVAR** ao trabalhar com o template `templates/whatsapp-oficial-waba/` ou com qualquer integração da Meta WhatsApp Cloud API (Graph API):
+
+- **Quando consultar:**
+  - Ao implementar, revisar ou debugar endpoints WABA da Meta (`graph.facebook.com`).
+  - Ao estruturar mensagens interativas: botões de resposta rápida, listas, carrosséis, templates HSM e upload/download de mídias.
+  - Ao configurar ou validar webhooks: verificação de assinatura HMAC-SHA256 (`X-Hub-Signature-256`) e handshake `hub.challenge`.
+  - Ao investigar **falhas silenciosas da Meta** (ex: mensagens que não chegam mesmo com webhook respondendo 200 OK — falta de `POST /{waba-id}/subscribed_apps`, token sem permissão de ativo no Business Manager, ou campos de webhook não subscritos).
+  - Ao lidar com templates HSM (marketing, utility, authentication) e regras de janela de serviço de 24 horas.
+- **Referências para leitura:**
+  - `~/.agents/skills/bf-waba-expert/references/webhooks-and-security.md` (HMAC e handshake anti-XSS)
+  - `~/.agents/skills/bf-waba-expert/references/templates-and-lifecycle.md` (ciclo de vida de templates, janela 24h e pricing)
+  - `~/.agents/skills/bf-waba-expert/references/coexistence-and-compliance.md` (coexistência App + Cloud API no mesmo número)
+---
+
+## 4. Guia de Decisão de Templates
 
 Ao receber uma demanda para implementar um agente, selecione o template correto:
 
@@ -60,7 +80,7 @@ graph TD
 
 ---
 
-## 4. Protocolo de Scaffolding (Criando um Novo Cliente)
+## 5. Protocolo de Scaffolding (Criando um Novo Cliente)
 
 Quando o usuário pedir: *"Crie um agente para o cliente X"*, execute rigorosamente esta sequência:
 
@@ -139,7 +159,7 @@ curl -s http://127.0.0.1:<PORT>/health
 
 ---
 
-## 5. Doutrina de Atendimento (Instruções para o Agente em Conversas)
+## 6. Doutrina de Atendimento (Instruções para o Agente em Conversas)
 
 1. **A regra do "Humano por trás do WhatsApp":**
    - O agente opera em nome de um atendente ou consultor da empresa.
@@ -153,7 +173,7 @@ curl -s http://127.0.0.1:<PORT>/health
 
 ---
 
-## 6. Checklist Rápido de Troubleshooting
+## 7. Checklist Rápido de Troubleshooting
 
 | Sintoma | Diagnóstico | Comando de Resolução |
 |---|---|---|
